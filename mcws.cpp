@@ -7,12 +7,6 @@ eh pequeno o suficiente (eles sempre sao brutados)
 */
 
 #include <bits/stdc++.h>
-// #include <vector>
-// #include <deque>
-// #include <algorithm>
-// #include <cmath>
-// #include <string>
-// #include <iostream>
 using namespace std;
 // #define int long long
 
@@ -105,7 +99,7 @@ void unite(int x, int y, double cost)
   if (x == y)
     return;
 
-  tours.at(x).distance_rightmost_afs = tours.at(y).distance_rightmost_afs;
+//   tours.at(x).distance_rightmost_afs = tours.at(y).distance_rightmost_afs;
   tours.at(x).distance += cost;
   tours.at(x).concat_lists(tours.at(y));
 
@@ -142,7 +136,6 @@ void rearrange(int x, int y, bool b1, bool b2) {
         reverse(tours.at(y).lista.begin(), tours.at(y).lista.end());
         swap(tours.at(y).distance_leftmost_afs, tours.at(y).distance_rightmost_afs);
         swap(tours.at(x).distance_leftmost_afs, tours.at(x).distance_rightmost_afs);
-
     }
 
     // esquerda esquerda
@@ -168,7 +161,7 @@ void uniteright(int x, int y, double cost)
   tours.at(y).concat_lists(tours.at(x));
 }
 
-void update_afs_dist(tour t1, tour t2, bool b1, bool b2) {
+void update_afs_dist(tour & t1, tour & t2, bool b1, bool b2) {
 
     if (!t1.has_afs && !t2.has_afs) { // sempre junto no da direita
         t1.distance_leftmost_afs += t2.distance_leftmost_afs - calculateEuclideanDistance(nodes.at(t2.lista.front()), depot) + calculateEuclideanDistance(nodes.at(t2.lista.front()), nodes.at(t1.lista.back()));
@@ -316,7 +309,7 @@ void initialize_try_to_make_more_feasible()
           nodes.at(infeasible.at(i).lista.back()),
           nodes.at(afs_estacoes_reabastecimento.at(j)));
       double distancia_afs_ate_depot = calculateEuclideanDistance(
-          nodes.at(0), nodes.at(afs_estacoes_reabastecimento.at(j)));
+          depot, nodes.at(afs_estacoes_reabastecimento.at(j)));
 
       // consigo chegar na AFS em questao e consigo voltar dela pro depot? se
       // sim, atualizo o minimo
@@ -465,7 +458,7 @@ void merge_tours(bool &houve_mudanca)
     if (distance_since_afs1 + distance_since_afs2 + calculateEuclideanDistance(nodes.at(par_merge.second.first), nodes.at(par_merge.second.second)) <= full_tank_capacity &&
         tour_equivalente1.distance + tour_equivalente2.distance - par_merge.first <= max_distance) {
         unite(par_merge.second.first, par_merge.second.second, -1*par_merge.first + tours.at(par_merge.second.second).distance);
-        update_afs_dist(tour_equivalente1, tour_equivalente2, left1, left2);
+        update_afs_dist(tours.at(find(par_merge.second.first)), tours.at(find(par_merge.second.second)), left1, left2);
         houve_mudanca = true;
 
     }
@@ -493,12 +486,17 @@ void merge_tours(bool &houve_mudanca)
         }
 
         if (da) {
-            tour_equivalente1.lista.emplace_back(afs_estacoes_reabastecimento.at(onde));
-            tour_equivalente1.distance += dist;
+            tours.at(find(par_merge.second.first)).lista.emplace_back(afs_estacoes_reabastecimento.at(onde)); // to colocando na direita
+            tours.at(find(par_merge.second.first)).distance += dist;
+            // adapt over here a questao de adicionar ou nao com a ajuda do left1 e left2
+            tours.at(find(par_merge.second.first)).distance_rightmost_afs += dist;
+            if (!tour_equivalente1.has_afs) {
+                tours.at(find(par_merge.second.first)).distance_leftmost_afs += dist;
+            }
             double cost = calculateEuclideanDistance(nodes.at(par_merge.second.first), nodes.at(afs_estacoes_reabastecimento.at(onde))) + calculateEuclideanDistance(nodes.at(par_merge.second.second), nodes.at(afs_estacoes_reabastecimento.at(onde)));
             cost -= calculateEuclideanDistance(nodes.at(par_merge.second.first), depot) + calculateEuclideanDistance(nodes.at(par_merge.second.second), depot);
             unite(par_merge.second.first, par_merge.second.second, cost);
-            update_afs_dist(tour_equivalente1, tour_equivalente2, left1, left2);
+            update_afs_dist(tours.at(find(par_merge.second.first)), tours.at(find(par_merge.second.second)), left1, left2);
             houve_mudanca = true;
         }
 
