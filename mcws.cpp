@@ -7,8 +7,14 @@ eh pequeno o suficiente (eles sempre sao brutados)
 */
 
 #include <bits/stdc++.h>
+// #include <vector>
+// #include <deque>
+// #include <algorithm>
+// #include <cmath>
+// #include <string>
+// #include <iostream>
 using namespace std;
-#define int long long
+// #define int long long
 
 int n;
 
@@ -38,7 +44,6 @@ struct tour
   double distance;
   double fuel;
   deque<int> lista;
-  vector<bool> incluso;
   bool feasible = true;
   bool has_afs = false;
 
@@ -48,7 +53,7 @@ struct tour
   tour()
   {
     distance = 0;
-    incluso.assign(n, 0);
+    // incluso.assign(n, 0);
   }
 
   void concat_lists(tour t2)
@@ -67,10 +72,20 @@ deque<pair<double, pair<int, int>>> savings_pair_list;
 
 node depot = node(0, "depot", 0, 0, 0);
 
-int n;
 
 vector<int> pai;
 vector<int> rank_dsu;
+
+// calculates the euclidean distance between two nodes
+double calculateEuclideanDistance(node node1, node node2)
+{
+  double R = 4182.44949, g = M_PI / 180;
+  double dlat = (node2.y - node1.y) * g, dlon = (node2.x - node1.x) * g;
+  double s = sin(dlat / 2) * sin(dlat / 2) + cos(node1.y * g) *
+                                                 cos(node2.y * g) *
+                                                 sin(dlon / 2) * sin(dlon / 2);
+  return 2 * R * asin(sqrt(s));
+}
 
 int find(int x)
 {
@@ -156,8 +171,8 @@ void uniteright(int x, int y, double cost)
 void update_afs_dist(tour t1, tour t2, bool b1, bool b2) {
 
     if (!t1.has_afs && !t2.has_afs) { // sempre junto no da direita
-        t1.distance_leftmost_afs += t2.distance_leftmost_afs - calculateEuclideanDistance(nodes.at(t2.lista.front()), depot);
-        t1.distance_rightmost_afs += t2.distance_rightmost_afs - calculateEuclideanDistance(nodes.at(t1.lista.back()), depot);
+        t1.distance_leftmost_afs += t2.distance_leftmost_afs - calculateEuclideanDistance(nodes.at(t2.lista.front()), depot) + calculateEuclideanDistance(nodes.at(t2.lista.front()), nodes.at(t1.lista.back()));
+        t1.distance_rightmost_afs += t2.distance_rightmost_afs - calculateEuclideanDistance(nodes.at(t1.lista.back()), depot) + calculateEuclideanDistance(nodes.at(t2.lista.front()), nodes.at(t1.lista.back()));
 
     }
     else if (!t1.has_afs && t2.has_afs) {
@@ -180,16 +195,7 @@ bool decCompare(pair<double, pair<int, int>> a, pair<double, pair<int, int>> b)
   return a.first > b.first;
 }
 
-// calculates the euclidean distance between two nodes
-double calculateEuclideanDistance(node node1, node node2)
-{
-  double R = 4182.44949, g = M_PI / 180;
-  double dlat = (node2.y - node1.y) * g, dlon = (node2.x - node1.x) * g;
-  double s = sin(dlat / 2) * sin(dlat / 2) + cos(node1.y * g) *
-                                                 cos(node2.y * g) *
-                                                 sin(dlon / 2) * sin(dlon / 2);
-  return 2 * R * asin(sqrt(s));
-}
+
 
 // inicializa recebendo as instancias e colocando num vetor global
 // equivalent to steps 1 and 2
@@ -247,23 +253,35 @@ void initialize()
 
   // colocar aqui rotas iniciais
 
+  depot = nodes.at(0);
+
   double calc;
+  tour tt;
+  tours.push_back(tt); // o 0 pra poder indexar corretamente
+  pai.push_back(0);
 
   for (int i = 1; i < n; i++)
   {
-
-    if (nodes.at(i).is_afs_recharging_station)
-      continue;
-
+    pai.push_back(i);
     calc = 2 * calculateEuclideanDistance(nodes.at(0), nodes.at(i));
     tour t;
     t.distance = calc;
+    t.distance_leftmost_afs = calc/2;
+    t.distance_rightmost_afs = t.distance_leftmost_afs;
+
+    if (nodes.at(i).is_afs_recharging_station) {
+        tours.push_back(t);
+        continue;
+    }
+
+    
     // t.lista.push_back(0);
     t.lista.push_back(i);
-    // t.lista.push_back(0);
-    t.incluso.at(0) = true;
-    t.incluso.at(i) = true;
+    // // t.lista.push_back(0);
+    // t.incluso.at(0) = true;
+    // t.incluso.at(i) = true;
     t.fuel = calc;
+    tours.push_back(t);
 
     if (calc <= full_tank_capacity && calc <= max_distance)
     {
@@ -366,7 +384,8 @@ void add_to_spl(int inicial, int final, vector<int> bordas)
     for (int j = 0; j < compare.size(); j++)
     {
       // d(v0,vi) + d(v0,vj) - d(vi,vj)
-      double cost = calculateEuclideanDistance(depot, nodes.at(bordas.at(i))) + calculateEuclideanDistance(depot, nodes.at(bordas.at(i))) - calculateEuclideanDistance(nodes.at(bordas.at(i)), nodes.at(bordas.at(j)));
+      double cost = calculateEuclideanDistance(depot, nodes.at(bordas.at(i))) + calculateEuclideanDistance(depot, nodes.at(compare.at(j))) - calculateEuclideanDistance(nodes.at(bordas.at(i)), nodes.at(compare.at(j)));
+      savings_pair_list.push_back({cost, {bordas.at(i), compare.at(j)}});
     }
     // calcular o quanto ganha
   }
@@ -385,8 +404,13 @@ void compute_savings()
   {
     int inicial = feasible.at(i).lista.front();
     int final = feasible.at(i).lista.back();
-
+    
     add_to_spl(inicial, final, bordas);
+
+    bordas.push_back(inicial);
+    if (inicial != final) {
+        bordas.push_back(final);
+    }
   }
 
   sort(savings_pair_list.begin(), savings_pair_list.end(), decCompare);
@@ -405,6 +429,7 @@ precisamos avaliar se eu posso fazer a uniao indicada ()
 
 void merge_tours(bool &houve_mudanca)
 {
+    houve_mudanca = false;
   // farei uma dsu para facilitar nossa vida hehehe
 
   // tenho a lista de todos os pares das pontas ORDENADOS
@@ -422,10 +447,10 @@ void merge_tours(bool &houve_mudanca)
     // se nao, f, continua igual
 
     tour tour_equivalente1 = tours.at(find(par_merge.second.first));
-    tour tour_equivalente2 = tours.at(find(par_merge.second.first));
+    tour tour_equivalente2 = tours.at(find(par_merge.second.second));
 
-    double d1 = tour_equivalente1.distance;
-    double d2 = tour_equivalente2.distance;
+    // double d1 = tour_equivalente1.distance;
+    // double d2 = tour_equivalente2.distance;
 
     bool left1, left2;
 
@@ -437,9 +462,9 @@ void merge_tours(bool &houve_mudanca)
     double distance_since_afs1 = tour_equivalente1.distance_rightmost_afs;
     double distance_since_afs2 = tour_equivalente2.distance_leftmost_afs;
 
-    if (distance_since_afs1 + distance_since_afs2 + calculateEuclideanDistance(nodes.at(par_merge.second.first), nodes.at(par_merge.second.first)) <= full_tank_capacity &&
+    if (distance_since_afs1 + distance_since_afs2 + calculateEuclideanDistance(nodes.at(par_merge.second.first), nodes.at(par_merge.second.second)) <= full_tank_capacity &&
         tour_equivalente1.distance + tour_equivalente2.distance - par_merge.first <= max_distance) {
-        unite(par_merge.second.first, par_merge.second.second, par_merge.first);
+        unite(par_merge.second.first, par_merge.second.second, -1*par_merge.first + tours.at(par_merge.second.second).distance);
         update_afs_dist(tour_equivalente1, tour_equivalente2, left1, left2);
         houve_mudanca = true;
 
@@ -468,12 +493,13 @@ void merge_tours(bool &houve_mudanca)
         }
 
         if (da) {
-            tour_equivalente1.lista.emplace_back(nodes.at(afs_estacoes_reabastecimento.at(onde)));
+            tour_equivalente1.lista.emplace_back(afs_estacoes_reabastecimento.at(onde));
             tour_equivalente1.distance += dist;
             double cost = calculateEuclideanDistance(nodes.at(par_merge.second.first), nodes.at(afs_estacoes_reabastecimento.at(onde))) + calculateEuclideanDistance(nodes.at(par_merge.second.second), nodes.at(afs_estacoes_reabastecimento.at(onde)));
             cost -= calculateEuclideanDistance(nodes.at(par_merge.second.first), depot) + calculateEuclideanDistance(nodes.at(par_merge.second.second), depot);
             unite(par_merge.second.first, par_merge.second.second, cost);
             update_afs_dist(tour_equivalente1, tour_equivalente2, left1, left2);
+            houve_mudanca = true;
         }
 
     }
@@ -582,6 +608,7 @@ void compute_and_merge_tours()
 
   while (houve_mudanca)
   {
+    houve_mudanca = false;
     compute_savings();
     merge_tours(houve_mudanca);
   }
@@ -597,18 +624,23 @@ signed main(signed argc, char *argv[]) {
 
   int cont = 0;
 
+  double total_distance = 0;
+
   for (int i = 0; i < tours.size(); i++) {
-      if (pai[i] == i) {
+      if (i != 0 && pai[i] == i && !nodes.at(i).is_afs_recharging_station) {
         cont++;
+        total_distance += tours[i].distance;
         cout << "carro " << cont << ": ";
         for (int j = 0; j < tours[i].lista.size(); j++) {
             cout << tours[i].lista[j] << " ";
         }
-        cout << "\n";
+
+        cout << "(" << tours[i].distance << " miles)" << "\n";
     }
+
   }
 
-  cout << "total de " << cont << " carros utilizados!\n";
+  cout << "total de " << cont << " carros utilizados! e " << total_distance <<" rodadas\n";
 
 
 

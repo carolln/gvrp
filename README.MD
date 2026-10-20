@@ -4,8 +4,11 @@ Implementation of heuristics and (futurely) meta-heuristics that refer to the Gr
 
 compile the file with 
 
+```bash
 g++ mcws.cpp -o mcws
+```
 
 execute the file with
-
+```bash
 ./mcws < instances/put_instance_name_here.txt
+```
