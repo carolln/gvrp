@@ -40,6 +40,7 @@ struct tour
   deque<int> lista;
   vector<bool> incluso;
   bool feasible = true;
+  bool has_afs = false;
 
   double distance_rightmost_afs;
   double distance_leftmost_afs;
@@ -64,6 +65,8 @@ deque<tour> infeasible, feasible;
 vector<int> afs_estacoes_reabastecimento;
 deque<pair<double, pair<int, int>>> savings_pair_list;
 
+node depot = node(0, "depot", 0, 0, 0);
+
 int n;
 
 vector<int> pai;
@@ -79,7 +82,7 @@ int find(int x)
     return x = find(pai[x]);
 }
 
-void uniteleft(int x, int y, double cost)
+void unite(int x, int y, double cost)
 {
   x = find(pai[x]);
   y = find(pai[y]);
@@ -88,8 +91,10 @@ void uniteleft(int x, int y, double cost)
     return;
 
   tours.at(x).distance_rightmost_afs = tours.at(y).distance_rightmost_afs;
-  tours.at(x).distance -= cost;
+  tours.at(x).distance += cost;
   tours.at(x).concat_lists(tours.at(y));
+
+  pai[y] = pai[x];
 
   // if (rank_dsu[x] > rank_dsu[y]) {
   //     pai[y] = x;
@@ -101,6 +106,37 @@ void uniteleft(int x, int y, double cost)
   //     pai[y] = x;
   //     rank_dsu[x]++;
   // }
+}
+
+void rearrange(int x, int y, bool b1, bool b2) {
+
+    x = find(x);
+    y = find(y);
+
+    if (!b1 && !b2) {
+        reverse(tours.at(y).lista.begin(), tours.at(y).lista.end());
+        swap(tours.at(y).distance_leftmost_afs, tours.at(y).distance_rightmost_afs);
+    }
+
+    // direita esquerda do nothing
+
+
+    // esquerda direita
+    else if (b1 && !b2) {
+        reverse(tours.at(x).lista.begin(), tours.at(x).lista.end());
+        reverse(tours.at(y).lista.begin(), tours.at(y).lista.end());
+        swap(tours.at(y).distance_leftmost_afs, tours.at(y).distance_rightmost_afs);
+        swap(tours.at(x).distance_leftmost_afs, tours.at(x).distance_rightmost_afs);
+
+    }
+
+    // esquerda esquerda
+    else if (b1 && b2) {
+        reverse(tours.at(x).lista.begin(), tours.at(x).lista.end());
+        swap(tours.at(x).distance_leftmost_afs, tours.at(x).distance_rightmost_afs);
+    }
+
+
 }
 
 void uniteright(int x, int y, double cost)
@@ -115,6 +151,28 @@ void uniteright(int x, int y, double cost)
   tours.at(y).distance_rightmost_afs = tours.at(x).distance_rightmost_afs;
   tours.at(y).distance -= cost;
   tours.at(y).concat_lists(tours.at(x));
+}
+
+void update_afs_dist(tour t1, tour t2, bool b1, bool b2) {
+
+    if (!t1.has_afs && !t2.has_afs) { // sempre junto no da direita
+        t1.distance_leftmost_afs += t2.distance_leftmost_afs - calculateEuclideanDistance(nodes.at(t2.lista.front()), depot);
+        t1.distance_rightmost_afs += t2.distance_rightmost_afs - calculateEuclideanDistance(nodes.at(t1.lista.back()), depot);
+
+    }
+    else if (!t1.has_afs && t2.has_afs) {
+        t1.distance_leftmost_afs += t2.distance_leftmost_afs - calculateEuclideanDistance(nodes.at(t2.lista.front()), depot) + calculateEuclideanDistance(nodes.at(t2.lista.front()), nodes.at(t1.lista.back()));
+        t1.distance_rightmost_afs = t2.distance_rightmost_afs;
+
+    }
+    else if (t1.has_afs && !t2.has_afs) {
+        t1.distance_leftmost_afs = t1.distance_leftmost_afs;
+        t1.distance_rightmost_afs += t2.distance_leftmost_afs - calculateEuclideanDistance(nodes.at(t1.lista.back()), depot) + calculateEuclideanDistance(nodes.at(t2.lista.front()), nodes.at(t1.lista.back()));
+
+    }
+    else {
+        t1.distance_rightmost_afs = t2.distance_rightmost_afs;
+    }
 }
 
 bool decCompare(pair<double, pair<int, int>> a, pair<double, pair<int, int>> b)
@@ -200,9 +258,9 @@ void initialize()
     calc = 2 * calculateEuclideanDistance(nodes.at(0), nodes.at(i));
     tour t;
     t.distance = calc;
-    t.lista.push_back(0);
+    // t.lista.push_back(0);
     t.lista.push_back(i);
-    t.lista.push_back(0);
+    // t.lista.push_back(0);
     t.incluso.at(0) = true;
     t.incluso.at(i) = true;
     t.fuel = calc;
@@ -214,6 +272,7 @@ void initialize()
 
     else
     {
+        t.feasible = false;
       infeasible.push_back(t);
     }
   }
@@ -369,73 +428,147 @@ void merge_tours(bool &houve_mudanca)
     double d2 = tour_equivalente2.distance;
 
     bool left1, left2;
-    double distance_since_afs1;
-    double distance_since_afs2;
 
-    if (par_merge.second.first == tour_equivalente1.lista.front())
-    {
-      distance_since_afs1 = tour_equivalente1.distance_leftmost_afs;
-      left1 = true;
-    }
-    else
-    {
-      distance_since_afs1 = tour_equivalente1.distance_rightmost_afs;
-      left1 = false;
-    }
+    left1 = (par_merge.second.first == tour_equivalente1.lista.front());
+    left2 = (par_merge.second.second == tour_equivalente2.lista.front());
 
-    if (par_merge.second.second == tour_equivalente2.lista.front())
-    {
-      distance_since_afs2 = tour_equivalente2.distance_leftmost_afs;
-      left2 = true;
-    }
-    else
-    {
-      distance_since_afs2 = tour_equivalente2.distance_rightmost_afs;
-      left2 = false;
+    rearrange(par_merge.second.first, par_merge.second.second, left1, left2);
+
+    double distance_since_afs1 = tour_equivalente1.distance_rightmost_afs;
+    double distance_since_afs2 = tour_equivalente2.distance_leftmost_afs;
+
+    if (distance_since_afs1 + distance_since_afs2 + calculateEuclideanDistance(nodes.at(par_merge.second.first), nodes.at(par_merge.second.first)) <= full_tank_capacity &&
+        tour_equivalente1.distance + tour_equivalente2.distance - par_merge.first <= max_distance) {
+        unite(par_merge.second.first, par_merge.second.second, par_merge.first);
+        update_afs_dist(tour_equivalente1, tour_equivalente2, left1, left2);
+        houve_mudanca = true;
+
     }
 
-    double distancia_entre_nos_ponta = -1 * (par_merge.first - d1 - d2);
-
-    // double distance_since_afs1 = (par_merge.second.first == tour_equivalente1.lista.front() ? tour_equivalente1.distance_leftmost_afs : tour_equivalente1.distance_rightmost_afs);
-    // double distance_since_afs2 = (par_merge.second.second == tour_equivalente2.lista.front() ? tour_equivalente2.distance_leftmost_afs : tour_equivalente2.distance_rightmost_afs);
-
-    if (tour_equivalente1.distance + tour_equivalente2.distance + distancia_entre_nos_ponta - d1 - d2 <= max_distance &&
-            distance_since_afs1 + distance_since_afs2 + distancia_entre_nos_ponta <= tour_equivalente1.fuel ||
-        distance_since_afs1 + distance_since_afs2 + distancia_entre_nos_ponta <= tour_equivalente2.fuel)
-    { // both constraints are met
-
-      if (distance_since_afs1 + distance_since_afs2 <= tour_equivalente1.fuel)
-      {
-        tours.at(par_merge.second.first).concat_lists(tours.at(par_merge.second.second));
-        uniteleft(par_merge.second.first, par_merge.second.second, par_merge.first);
-      }
-
-      else
-      {
-        tours.at(par_merge.second.second).concat_lists(tours.at(par_merge.second.first));
-        uniteright(par_merge.second.first, par_merge.second.second, par_merge.first);
-      }
-
-      houve_mudanca = true;
+    else if (tour_equivalente1.distance + tour_equivalente2.distance - par_merge.first > max_distance) {
+        // do nothing
     }
 
-    else if (tours.at(par_merge.second.first).distance + tours.at(par_merge.second.second).distance - d1 - d2 <= max_distance)
-    { // u cant add it cause the cars gonna be traveling too much
-      // do nothing lowkey
-    }
-
-    else
-    { // u cant add it cause u dont have enough fuel, test everything
-      bool posso = false;
-            int node1 = (left1 == true ? );
-
-            for (int i = 0; i < afs_estacoes_reabastecimento.size(); i++)
-            {
+    else {
+        // testar todas as afs
+        bool da = false;
+        double dist = 1000000000;
+        int onde;
+        for (int i = 0; i < afs_estacoes_reabastecimento.size(); i++) {
+            if (distance_since_afs1 + calculateEuclideanDistance(nodes.at(par_merge.second.first), nodes.at(afs_estacoes_reabastecimento.at(i))) <= full_tank_capacity &&
+                distance_since_afs2 + calculateEuclideanDistance(nodes.at(par_merge.second.second), nodes.at(afs_estacoes_reabastecimento.at(i))) <= full_tank_capacity) {
+                da = true;
+                if (calculateEuclideanDistance(nodes.at(par_merge.second.first), nodes.at(afs_estacoes_reabastecimento.at(i))) + calculateEuclideanDistance(nodes.at(par_merge.second.second), nodes.at(afs_estacoes_reabastecimento.at(i))) < dist) {
+                    dist = calculateEuclideanDistance(nodes.at(par_merge.second.first), nodes.at(afs_estacoes_reabastecimento.at(i)));
+                    // essa aq ja eh calculada
+                    // + calculateEuclideanDistance(nodes.at(par_merge.second.second), nodes.at(afs_estacoes_reabastecimento.at(i)))
+                    onde = i;
+                }
             }
+        }
 
-            if (!posso)
-              continue;
+        if (da) {
+            tour_equivalente1.lista.emplace_back(nodes.at(afs_estacoes_reabastecimento.at(onde)));
+            tour_equivalente1.distance += dist;
+            double cost = calculateEuclideanDistance(nodes.at(par_merge.second.first), nodes.at(afs_estacoes_reabastecimento.at(onde))) + calculateEuclideanDistance(nodes.at(par_merge.second.second), nodes.at(afs_estacoes_reabastecimento.at(onde)));
+            cost -= calculateEuclideanDistance(nodes.at(par_merge.second.first), depot) + calculateEuclideanDistance(nodes.at(par_merge.second.second), depot);
+            unite(par_merge.second.first, par_merge.second.second, cost);
+            update_afs_dist(tour_equivalente1, tour_equivalente2, left1, left2);
+        }
+
     }
+
+    
+
+
+
+    // falta so atualizar os valores
+    
+
+    // revalue
+
+
+
+    // else if (direita esquerda) {
+
+    // }
+    // else if (esquerda direita) {
+
+    // }
+    // else if (esquerda esquerda) {
+        
+    // }
+
+
+
+
+
+//     if (par_merge.second.first == tour_equivalente1.lista.front())
+//     {
+//       distance_since_afs1 = tour_equivalente1.distance_leftmost_afs;
+//       left1 = true;
+//     }
+//     else
+//     {
+//       distance_since_afs1 = tour_equivalente1.distance_rightmost_afs;
+//       left1 = false;
+//     }
+
+//     if (par_merge.second.second == tour_equivalente2.lista.front())
+//     {
+//       distance_since_afs2 = tour_equivalente2.distance_leftmost_afs;
+//       left2 = true;
+//     }
+//     else
+//     {
+//       distance_since_afs2 = tour_equivalente2.distance_rightmost_afs;
+//       left2 = false;
+//     }
+
+
+//     double distancia_entre_nos_ponta = -1 * (par_merge.first - d1 - d2);
+
+//     // double distance_since_afs1 = (par_merge.second.first == tour_equivalente1.lista.front() ? tour_equivalente1.distance_leftmost_afs : tour_equivalente1.distance_rightmost_afs);
+//     // double distance_since_afs2 = (par_merge.second.second == tour_equivalente2.lista.front() ? tour_equivalente2.distance_leftmost_afs : tour_equivalente2.distance_rightmost_afs);
+
+//     if (tour_equivalente1.distance + tour_equivalente2.distance + distancia_entre_nos_ponta - d1 - d2 <= max_distance &&
+//         distance_since_afs1 + distance_since_afs2 + distancia_entre_nos_ponta <= tour_equivalente1.fuel ||
+//         distance_since_afs1 + distance_since_afs2 + distancia_entre_nos_ponta <= tour_equivalente2.fuel) { // both constraints are met
+
+//         if (distance_since_afs1 + distance_since_afs2 <= tour_equivalente1.fuel) {
+//             tours.at(par_merge.second.first).concat_lists(tours.at(par_merge.second.second));
+//             uniteleft(par_merge.second.first, par_merge.second.second, par_merge.first);
+//         }
+
+//         else {
+//             tours.at(par_merge.second.second).concat_lists(tours.at(par_merge.second.first));
+//             uniteright(par_merge.second.first, par_merge.second.second, par_merge.first);
+//         }
+
+//       houve_mudanca = true;
+//     }
+
+//     else if (tours.at(par_merge.second.first).distance + tours.at(par_merge.second.second).distance - d1 - d2 <= max_distance)
+//     { // u cant add it cause the cars gonna be traveling too much
+//       // do nothing lowkey
+//     }
+
+//     else
+//     { // u cant add it cause u dont have enough fuel, test everything
+//         bool posso = false;
+//         int node1 = (left1 == true ? );
+
+//         for (int i = 0; i < afs_estacoes_reabastecimento.size(); i++) {
+//             if (distance_since_afs1 + calculateEuclideanDistance(nodes.at(afs_estacoes_reabastecimento.at(i)), nodes.at()) <= tour_equivalente1.fuel && distance_since_afs2 + calculateEuclideanDistance()) {
+
+//             }
+//             else if () {
+
+//             }
+//         }
+
+//         if (!posso) continue;
+//     }
   }
 }
 
@@ -454,13 +587,30 @@ void compute_and_merge_tours()
   }
 }
 
-signed main(signed argc, char *argv[])
-{
+signed main(signed argc, char *argv[]) {
 
   initialize();
 
   initialize_try_to_make_more_feasible();
 
-  compute_and_merge_tours();
+  compute_and_merge_tours(); // 4 e 5
+
+  int cont = 0;
+
+  for (int i = 0; i < tours.size(); i++) {
+      if (pai[i] == i) {
+        cont++;
+        cout << "carro " << cont << ": ";
+        for (int j = 0; j < tours[i].lista.size(); j++) {
+            cout << tours[i].lista[j] << " ";
+        }
+        cout << "\n";
+    }
+  }
+
+  cout << "total de " << cont << " carros utilizados!\n";
+
+
+
   return 0;
 }
