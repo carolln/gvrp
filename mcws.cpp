@@ -91,6 +91,16 @@ int find(int x)
     return x = find(pai[x]);
 }
 
+
+// peco perdao essa funcao foi projetada da PIOR MANEIRA POSSIVEL mas agora eh tarde demais
+/*
+essa funcao funciona assim:
+ele faz o unite na dsu com compressao de caminhos e afins
+adiciona o custo TOTAL do tour y ao tour x
+adiciona o custo passado (que deve ser equivalente a distancia de vi a vj - (distancia de vi ate depot + distancia de vj ate depot))
+espero ter feito sentido
+*/
+
 void unite(int x, int y, double cost)
 {
   x = find(pai[x]);
@@ -100,7 +110,9 @@ void unite(int x, int y, double cost)
     return;
 
 //   tours.at(x).distance_rightmost_afs = tours.at(y).distance_rightmost_afs;
-  tours.at(x).distance += cost;
+
+  tours.at(x).distance += cost + tours.at(y).distance;
+  // mais a distance do y menos a distance ate o depot
   tours.at(x).concat_lists(tours.at(y));
 
   pai[y] = pai[x];
@@ -164,9 +176,9 @@ void uniteright(int x, int y, double cost)
 void update_afs_dist(tour & t1, tour & t2, bool b1, bool b2) {
 
     if (!t1.has_afs && !t2.has_afs) { // sempre junto no da direita
+        // double og_t1_leftmost_dist = t1.distance_leftmost_afs;
         t1.distance_leftmost_afs += t2.distance_leftmost_afs - calculateEuclideanDistance(nodes.at(t2.lista.front()), depot) + calculateEuclideanDistance(nodes.at(t2.lista.front()), nodes.at(t1.lista.back()));
-        t1.distance_rightmost_afs += t2.distance_rightmost_afs - calculateEuclideanDistance(nodes.at(t1.lista.back()), depot) + calculateEuclideanDistance(nodes.at(t2.lista.front()), nodes.at(t1.lista.back()));
-
+        t1.distance_rightmost_afs = t2.distance_rightmost_afs + t1.distance_rightmost_afs - calculateEuclideanDistance(nodes.at(t1.lista.back()), depot) + calculateEuclideanDistance(nodes.at(t2.lista.front()), nodes.at(t1.lista.back()));
     }
     else if (!t1.has_afs && t2.has_afs) {
         t1.distance_leftmost_afs += t2.distance_leftmost_afs - calculateEuclideanDistance(nodes.at(t2.lista.front()), depot) + calculateEuclideanDistance(nodes.at(t2.lista.front()), nodes.at(t1.lista.back()));
@@ -274,16 +286,17 @@ void initialize()
     // t.incluso.at(0) = true;
     // t.incluso.at(i) = true;
     t.fuel = calc;
-    tours.push_back(t);
-
+    
     if (calc <= full_tank_capacity && calc <= max_distance)
     {
+      tours.push_back(t);
       feasible.push_back(t);
     }
 
     else
     {
         t.feasible = false;
+        tours.push_back(t);
       infeasible.push_back(t);
     }
   }
@@ -295,6 +308,7 @@ void initialize()
 
 void initialize_try_to_make_more_feasible()
 {
+  vector<int> tirar;
 
   for (int i = 0; i < infeasible.size(); i++)
   {
@@ -314,8 +328,9 @@ void initialize_try_to_make_more_feasible()
       // consigo chegar na AFS em questao e consigo voltar dela pro depot? se
       // sim, atualizo o minimo
 
-      if (infeasible.at(i).fuel / 2 + distancia_node_ate_afs <= max_distance &&
-          distancia_afs_ate_depot <= max_distance)
+      if (infeasible.at(i).distance / 2 + distancia_node_ate_afs + distancia_afs_ate_depot <= max_distance &&
+          distancia_afs_ate_depot <= full_tank_capacity &&
+          infeasible.at(i).distance / 2 + distancia_node_ate_afs <= full_tank_capacity)
       {
 
         double tempdist = infeasible.at(i).distance -
@@ -343,6 +358,7 @@ void initialize_try_to_make_more_feasible()
     {
 
       tour t = infeasible.at(i);
+      tirar.push_back(i);
 
       double distancia_node_ate_afs = calculateEuclideanDistance(
           nodes.at(infeasible.at(i).lista.back()),
@@ -358,6 +374,19 @@ void initialize_try_to_make_more_feasible()
       feasible.push_back(t);
     }
   }
+  deque<tour> refeito;
+  int j = 0;
+
+  for (int i = 0; i < infeasible.size(); i++) {
+    if (j < tirar.size() && tirar[j] == i) {
+      j++;
+    }
+    else {
+      refeito.push_back(infeasible.at(i));
+    }
+  }
+
+  infeasible = refeito;
 }
 
 // EQUIVALENT TO STEP 4 !!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -457,8 +486,8 @@ void merge_tours(bool &houve_mudanca)
 
     if (distance_since_afs1 + distance_since_afs2 + calculateEuclideanDistance(nodes.at(par_merge.second.first), nodes.at(par_merge.second.second)) <= full_tank_capacity &&
         tour_equivalente1.distance + tour_equivalente2.distance - par_merge.first <= max_distance) {
-        unite(par_merge.second.first, par_merge.second.second, -1*par_merge.first + tours.at(par_merge.second.second).distance);
-        update_afs_dist(tours.at(find(par_merge.second.first)), tours.at(find(par_merge.second.second)), left1, left2);
+          update_afs_dist(tours.at(find(par_merge.second.first)), tours.at(find(par_merge.second.second)), left1, left2);
+          unite(par_merge.second.first, par_merge.second.second, -1*par_merge.first + tours.at(par_merge.second.second).distance);
         houve_mudanca = true;
 
     }
@@ -487,16 +516,17 @@ void merge_tours(bool &houve_mudanca)
 
         if (da) {
             tours.at(find(par_merge.second.first)).lista.emplace_back(afs_estacoes_reabastecimento.at(onde)); // to colocando na direita
-            tours.at(find(par_merge.second.first)).distance += dist;
+            tours.at(find(par_merge.second.first)).distance += dist - calculateEuclideanDistance(depot, nodes.at(par_merge.second.first)) + calculateEuclideanDistance(nodes.at(afs_estacoes_reabastecimento.at(onde)), depot);
             // adapt over here a questao de adicionar ou nao com a ajuda do left1 e left2
-            tours.at(find(par_merge.second.first)).distance_rightmost_afs += dist;
+            tours.at(find(par_merge.second.first)).distance_rightmost_afs = calculateEuclideanDistance(nodes.at(afs_estacoes_reabastecimento.at(onde)), depot);
             if (!tour_equivalente1.has_afs) {
-                tours.at(find(par_merge.second.first)).distance_leftmost_afs += dist;
+              tours.at(find(par_merge.second.first)).distance_leftmost_afs += dist;
             }
-            double cost = calculateEuclideanDistance(nodes.at(par_merge.second.first), nodes.at(afs_estacoes_reabastecimento.at(onde))) + calculateEuclideanDistance(nodes.at(par_merge.second.second), nodes.at(afs_estacoes_reabastecimento.at(onde)));
-            cost -= calculateEuclideanDistance(nodes.at(par_merge.second.first), depot) + calculateEuclideanDistance(nodes.at(par_merge.second.second), depot);
-            unite(par_merge.second.first, par_merge.second.second, cost);
+            tours.at(find(par_merge.second.first)).has_afs = true;
+            double cost = calculateEuclideanDistance(nodes.at(par_merge.second.second), nodes.at(afs_estacoes_reabastecimento.at(onde)));
+            cost -= calculateEuclideanDistance(nodes.at(afs_estacoes_reabastecimento.at(onde)), depot) + calculateEuclideanDistance(nodes.at(par_merge.second.second), depot);
             update_afs_dist(tours.at(find(par_merge.second.first)), tours.at(find(par_merge.second.second)), left1, left2);
+            unite(par_merge.second.first, par_merge.second.second, cost);
             houve_mudanca = true;
         }
 
@@ -625,7 +655,7 @@ signed main(signed argc, char *argv[]) {
   double total_distance = 0;
 
   for (int i = 0; i < tours.size(); i++) {
-      if (i != 0 && pai[i] == i && !nodes.at(i).is_afs_recharging_station) {
+      if (i != 0 && pai[i] == i && !nodes.at(i).is_afs_recharging_station && tours.at(i).feasible) {
         cont++;
         total_distance += tours[i].distance;
         cout << "carro " << cont << ": ";
@@ -638,7 +668,17 @@ signed main(signed argc, char *argv[]) {
 
   }
 
-  cout << "total de " << cont << " carros utilizados! e " << total_distance <<" rodadas\n";
+  if (infeasible.size()) {
+    cout << "devido as restricoes definidas na instancia passada e a natureza do algoritmo implementado, os seguintes clientes nao foram inclusos na solucao: ";
+  }
+
+  for (int i = 0; i < infeasible.size(); i++) {
+    cont++;
+    total_distance+= infeasible.at(i).distance;
+    cout << infeasible.at(i).lista.front() << ", ";
+  }
+
+  cout << "\n\ntotal de " << cont << " carros utilizados e " << total_distance <<" milhas rodadas!\n";
 
 
 
