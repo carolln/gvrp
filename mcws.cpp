@@ -159,20 +159,6 @@ void rearrange(int x, int y, bool b1, bool b2) {
 
 }
 
-void uniteright(int x, int y, double cost)
-{
-
-  x = find(pai[x]);
-  y = find(pai[y]);
-
-  if (x == y)
-    return;
-
-  tours.at(y).distance_rightmost_afs = tours.at(x).distance_rightmost_afs;
-  tours.at(y).distance -= cost;
-  tours.at(y).concat_lists(tours.at(x));
-}
-
 void update_afs_dist(tour & t1, tour & t2, bool b1, bool b2) {
 
     if (!t1.has_afs && !t2.has_afs) { // sempre junto no da direita
@@ -487,7 +473,7 @@ void merge_tours(bool &houve_mudanca)
     if (distance_since_afs1 + distance_since_afs2 + calculateEuclideanDistance(nodes.at(par_merge.second.first), nodes.at(par_merge.second.second)) <= full_tank_capacity &&
         tour_equivalente1.distance + tour_equivalente2.distance - par_merge.first <= max_distance) {
           update_afs_dist(tours.at(find(par_merge.second.first)), tours.at(find(par_merge.second.second)), left1, left2);
-          unite(par_merge.second.first, par_merge.second.second, -1*par_merge.first + tours.at(par_merge.second.second).distance);
+          unite(par_merge.second.first, par_merge.second.second, -1*par_merge.first);
         houve_mudanca = true;
 
     }
