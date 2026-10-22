@@ -408,10 +408,13 @@ void compute_savings()
 
   // como os conjuntos sao disjuntos, nao precisamos colocar em um set!
 
-  for (int i = 0; i < feasible.size(); i++)
+  for (int i = 1; i < tours.size(); i++)
   {
-    int inicial = feasible.at(i).lista.front();
-    int final = feasible.at(i).lista.back();
+    if (nodes.at(i).is_afs_recharging_station || find(i) != i) { // o pai eh diferente, nao adianta
+      continue;
+    }
+    int inicial = tours.at(i).lista.front();
+    int final = tours.at(i).lista.back();
     
     add_to_spl(inicial, final, bordas);
 
@@ -448,6 +451,14 @@ void merge_tours(bool &houve_mudanca)
 
     if (find(par_merge.second.first) == find(par_merge.second.second))
       continue;
+    
+    if (!tours.at(par_merge.second.first).feasible && !tours.at(par_merge.second.second).feasible) {
+      continue;
+    }
+    
+      if (!tours.at(par_merge.second.first).feasible) {
+        swap(par_merge.second.first, par_merge.second.second);
+      }
 
     // vejo se posso unir
     // se posso, concateno uma lista na outra
@@ -640,12 +651,15 @@ signed main(signed argc, char *argv[]) {
 
   double total_distance = 0;
 
+  bool ja[25] = {0};
+
   for (int i = 0; i < tours.size(); i++) {
       if (i != 0 && pai[i] == i && !nodes.at(i).is_afs_recharging_station && tours.at(i).feasible) {
         cont++;
         total_distance += tours[i].distance;
         cout << "carro " << cont << ": ";
         for (int j = 0; j < tours[i].lista.size(); j++) {
+            ja[tours[i].lista[j]] = true;
             cout << tours[i].lista[j] << " ";
         }
 
@@ -654,11 +668,16 @@ signed main(signed argc, char *argv[]) {
 
   }
 
+
   if (infeasible.size()) {
     cout << "devido as restricoes definidas na instancia passada e a natureza do algoritmo implementado, os seguintes clientes nao foram inclusos na solucao: ";
   }
 
   for (int i = 0; i < infeasible.size(); i++) {
+    /**/
+    if (ja[infeasible.at(i).lista.front()]) {
+      continue;
+    }
     cont++;
     total_distance+= infeasible.at(i).distance;
     cout << infeasible.at(i).lista.front() << ", ";

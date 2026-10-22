@@ -8,3 +8,12 @@ total de 4 carros utilizados! e 836.236 rodadas
 
 calculateEuclideanDistance(nodes.at(21), nodes.at(22))
 calculateEuclideanDistance(nodes.at(21), depot) + calculateEuclideanDistance(nodes.at(21), nodes.at(22)) + calculateEuclideanDistance(nodes.at(22), nodes.at(2)) + calculateEuclideanDistance(nodes.at(2), nodes.at(5)) + calculateEuclideanDistance(nodes.at(5), nodes.at(13)) + calculateEuclideanDistance(nodes.at(5), depot)
+
+
+
+calculateEuclideanDistance(nodes.at(), nodes.at())
+
+calculateEuclideanDistance(nodes.at(7), depot) + calculateEuclideanDistance(nodes.at(7), nodes.at(3))  + calculateEuclideanDistance(nodes.at(3), nodes.at(18)) + calculateEuclideanDistance(nodes.at(18), nodes.at(19)) + calculateEuclideanDistance(nodes.at(19), nodes.at(14)) + calculateEuclideanDistance(nodes.at(14), depot)
+
+
+calculateEuclideanDistance(nodes.at(11), depot) + calculateEuclideanDistance(nodes.at(11), nodes.at(1))  + calculateEuclideanDistance(nodes.at(1), nodes.at(15)) + calculateEuclideanDistance(nodes.at(15), nodes.at(16)) + calculateEuclideanDistance(nodes.at(16), nodes.at(12)) + calculateEuclideanDistance(nodes.at(12), depot)
