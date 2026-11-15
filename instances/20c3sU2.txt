@@ -29,5 +29,5 @@
  r fuel consumption rate /0.2/
  TL TourLength /11/
  v average Velocity /40/
- m numVeh /3/
+ m numVeh /6/
 
