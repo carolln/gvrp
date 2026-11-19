@@ -1,0 +1,37 @@
+ID      Type    Longitude       Latitude
+D	d	0, 0 -77.49439265	37.60851245
+D2	f	-1 0
+F1	f	-2 0
+F2	f	-2 0
+F3	f	-3 0
+F4	f	-4 0
+F5	f	-5 0
+F6	f	-6 0
+C1	c	-7 0
+C2	c	-8 0
+C3	c	-9 0
+C4	c	-10 0
+C5	c	-11 0
+C6	c	-22 0
+C7	c	-23 0
+C8	c	-24 0
+C9	c	-24 1
+C10	c	-25 0
+C11	c	-26 0
+C12	c	-28 0
+C13	c	-29 0
+C14	c	-30 0
+C15	c	-21 1
+C16	c	-2 2
+C17	c	-2 3
+C18	c	-2 4
+C19	c	-2 5
+C20	c	-2 6
+
+
+
+Q Vehicle fuel tank capacity /60/
+r fuel consumption rate /0.2/
+TL TourLength /11/
+v average Velocity /40/
+m numVeh /3/
